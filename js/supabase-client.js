@@ -321,6 +321,20 @@ export async function saveMasjid(masjidData) {
       .select()
       .single();
     if (error) throw error;
+
+    // Automatically initialize prayer schedule rows for the 5 daily prayers
+    if (data?.id) {
+      const defaultSchedules = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].map((p) => ({
+        masjid_id: data.id,
+        prayer_name: p,
+        azaan_time: '05:30 AM',
+        jamaat_time: '05:55 AM',
+        is_verified: false,
+        schedule_period: 'standard'
+      }));
+      await client.from('prayer_schedules').insert(defaultSchedules);
+    }
+
     return data;
   }
 }

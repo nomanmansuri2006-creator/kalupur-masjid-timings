@@ -2,7 +2,7 @@
 // TOAST NOTIFICATION UTILITY
 // ==============================================================================
 
-export function showToast(message, type = 'info', duration = 3500) {
+export function showToast(message, type = 'info', duration = 4000) {
   let container = document.getElementById('toast-container');
   if (!container) {
     container = document.createElement('div');
@@ -11,11 +11,23 @@ export function showToast(message, type = 'info', duration = 3500) {
     document.body.appendChild(container);
   }
 
+  // Detect and translate technical network errors
+  let friendlyMessage = message || '';
+  if (
+    typeof friendlyMessage === 'string' &&
+    (friendlyMessage.includes('Failed to fetch') ||
+      friendlyMessage.includes('NetworkError') ||
+      friendlyMessage.includes('fetch'))
+  ) {
+    friendlyMessage = `Cannot reach Supabase database (${message}). If you don't have a live Supabase project configured yet, please click "Switch to Demo Mode" in the top banner.`;
+    duration = 7000;
+  }
+
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
 
   const textSpan = document.createElement('span');
-  textSpan.textContent = message;
+  textSpan.textContent = friendlyMessage;
 
   const closeBtn = document.createElement('button');
   closeBtn.innerHTML = '&times;';

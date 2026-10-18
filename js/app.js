@@ -90,8 +90,20 @@ function renderModeBanner() {
       <span>
         🟢 <strong>Connected to Supabase:</strong> <code>${host}</code> (PostgreSQL + RLS Enabled)
       </span>
-      <button id="open-config-btn">Change Config</button>
+      <div style="display: flex; gap: 0.35rem;">
+        <button id="switch-demo-btn" style="background: transparent; border: 1px solid currentColor; color: inherit;">Switch to Demo Mode</button>
+        <button id="open-config-btn">Change Config</button>
+      </div>
     `;
+
+    const switchBtn = document.getElementById('switch-demo-btn');
+    if (switchBtn) {
+      switchBtn.onclick = () => {
+        saveConfig('', '');
+        showToast('Switched to local Trial Demo Mode.', 'info');
+        window.location.reload();
+      };
+    }
   } else {
     banner.className = 'mode-banner';
     banner.innerHTML = `
@@ -139,7 +151,9 @@ function openSupabaseConfigModal() {
           <button class="modal-close" id="close-config-modal">&times;</button>
         </div>
         <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
-          To connect this trial website to your live Supabase project, enter your Project URL and Public Anon Key (found in Supabase Dashboard &rarr; Settings &rarr; API).
+          To connect this trial website to your live Supabase project, enter your actual Project URL and Public Anon Key (found in Supabase Dashboard &rarr; Settings &rarr; API).
+          <br><br>
+          <em>If you haven't created a Supabase project yet, click <strong>"Use Demo Mode"</strong> below to test all features locally without setup!</em>
         </p>
 
         <form id="save-config-form">
@@ -151,10 +165,11 @@ function openSupabaseConfigModal() {
               type="url"
               id="cfg-url"
               class="form-input"
-              placeholder="https://your-project.supabase.co"
+              placeholder="https://xyzabcdefg.supabase.co"
               value="${config.SUPABASE_URL || ''}"
               required
             />
+            <div class="form-hint">Replace with your real Supabase project URL (do not leave as "your-project-id").</div>
           </div>
 
           <div class="form-group">
@@ -173,13 +188,13 @@ function openSupabaseConfigModal() {
             </div>
           </div>
 
-          <div class="modal-actions" style="justify-content: space-between;">
-            <button type="button" id="clear-config-btn" class="btn btn-outline" style="color: #dc2626; border-color: #fca5a5;">
-              Use Demo Mode
+          <div class="modal-actions" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+            <button type="button" id="clear-config-btn" class="btn btn-outline" style="color: #065f46; border-color: #065f46;">
+              ⚡ Use Demo Mode (Local Trial)
             </button>
             <div style="display: flex; gap: 0.5rem;">
               <button type="button" id="cancel-cfg-btn" class="btn btn-secondary">Cancel</button>
-              <button type="submit" class="btn btn-primary btn-lg">Save & Connect</button>
+              <button type="submit" class="btn btn-primary btn-lg" id="save-connect-btn">Test & Connect</button>
             </div>
           </div>
         </form>
@@ -198,21 +213,50 @@ function openSupabaseConfigModal() {
     showToast('Switched to local Trial Demo Mode.', 'info');
     close();
     renderModeBanner();
-    navigate();
+    window.location.reload();
   };
 
-  document.getElementById('save-config-form').onsubmit = (e) => {
+  document.getElementById('save-config-form').onsubmit = async (e) => {
     e.preventDefault();
     const url = document.getElementById('cfg-url').value.trim();
     const key = document.getElementById('cfg-key').value.trim();
+    const submitBtn = document.getElementById('save-connect-btn');
+
+    const { isPlaceholderConfig } = await import('./config.js');
+    if (isPlaceholderConfig(url, key)) {
+      showToast('Please enter your real project URL (e.g. https://xyz.supabase.co). Do not use the example placeholder "your-project-id".', 'error', 5000);
+      return;
+    }
 
     if (!url.startsWith('https://') && !url.startsWith('http://')) {
       showToast('Please enter a valid URL starting with https://', 'error');
       return;
     }
 
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Testing connection...';
+
+    // Verify endpoint is reachable before saving
+    try {
+      const testRes = await fetch(`${url}/rest/v1/masjids?select=id&limit=1`, {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`
+        }
+      });
+      // 200 OK or 401/403 (needs auth) indicates server exists and responded
+      if (!testRes.ok && testRes.status !== 401 && testRes.status !== 403 && testRes.status !== 404) {
+        throw new Error(`Server returned HTTP ${testRes.status}`);
+      }
+    } catch (netErr) {
+      showToast(`Cannot reach ${url} (${netErr.message || 'Failed to fetch'}). Please verify your URL or click "Use Demo Mode".`, 'error', 6000);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Test & Connect';
+      return;
+    }
+
     saveConfig(url, key);
-    showToast('Supabase configuration saved! Reloading connection...', 'success');
+    showToast('Supabase connection verified & saved!', 'success');
     close();
     renderModeBanner();
     window.location.reload();

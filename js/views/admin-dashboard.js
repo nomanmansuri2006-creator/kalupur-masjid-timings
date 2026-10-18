@@ -39,6 +39,7 @@ export async function renderAdminDashboard(container, activeTab = 'submissions')
   let reports = [];
   let auditLogs = [];
 
+  let fetchError = null;
   try {
     [masjids, pendingUpdates, profiles, reports, auditLogs] = await Promise.all([
       store.getAllMasjidsAdmin(),
@@ -49,6 +50,7 @@ export async function renderAdminDashboard(container, activeTab = 'submissions')
     ]);
   } catch (err) {
     console.error('Error fetching admin data:', err);
+    fetchError = err;
   }
 
   const activeImamsCount = profiles.filter((p) => p.role === 'imam' && p.active).length;
@@ -75,6 +77,22 @@ export async function renderAdminDashboard(container, activeTab = 'submissions')
         </button>
       </div>
     </div>
+
+    ${
+      fetchError
+        ? `<div style="background: #fee2e2; border: 1.5px solid #fca5a5; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; color: #991b1b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <strong>⚠️ Database Connection Error:</strong> Cannot reach Supabase (${fetchError.message || 'Failed to fetch'}).
+              <div style="font-size: 0.82rem; margin-top: 0.15rem; color: #7f1d1d;">
+                If you have not set up your live Supabase project yet, click <strong>"Switch to Demo Mode"</strong> to test creating masjids and managing timings locally.
+              </div>
+            </div>
+            <button id="alert-switch-demo-btn" class="btn btn-secondary" style="min-height: 38px; padding: 0.35rem 0.85rem; font-size: 0.85rem; background: #ffffff; border-color: #f87171; color: #991b1b; font-weight: 700;">
+              Switch to Demo Mode
+            </button>
+          </div>`
+        : ''
+    }
 
     <!-- Summary Metrics Cards -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; margin-bottom: 1.5rem;">
@@ -186,6 +204,16 @@ export async function renderAdminDashboard(container, activeTab = 'submissions')
     await store.logout();
     window.location.hash = '#home';
   };
+
+  const alertSwitchBtn = document.getElementById('alert-switch-demo-btn');
+  if (alertSwitchBtn) {
+    alertSwitchBtn.onclick = async () => {
+      const { saveConfig } = await import('../config.js');
+      saveConfig('', '');
+      showToast('Switched to local Trial Demo Mode.', 'info');
+      window.location.reload();
+    };
+  }
 
   const tabContent = document.getElementById('admin-tab-content');
   const modalsContainer = document.getElementById('admin-modals-container');
@@ -576,6 +604,12 @@ function openMasjidFormModal(container, existing) {
 
   document.getElementById('masjid-modal-form').onsubmit = async (e) => {
     e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = isEdit ? 'Saving...' : 'Creating...';
+    }
+
     const data = {
       ...(isEdit ? { id: existing.id } : {}),
       name: document.getElementById('m-name').value.trim(),
@@ -586,11 +620,16 @@ function openMasjidFormModal(container, existing) {
     };
     try {
       await store.saveMasjid(data);
-      showToast(`Masjid ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
+      showToast(`Masjid "${data.name}" ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
       close();
       renderAdminDashboard(document.getElementById('main-view-container'), 'masjids');
     } catch (err) {
-      showToast(err.message, 'error');
+      console.error(err);
+      showToast(err.message || 'Failed to save masjid.', 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = isEdit ? 'Save Changes' : 'Create Masjid';
+      }
     }
   };
 }
