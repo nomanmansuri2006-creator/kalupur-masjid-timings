@@ -139,6 +139,16 @@ body {
   min-height: 36px;
 }
 
+.install-app-button {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.install-app-button[hidden] {
+  display: none;
+}
+
 .nav-pill:hover, .nav-pill:focus {
   background: rgba(255, 255, 255, 0.25);
 }
@@ -710,5 +720,100 @@ body {
     flex-direction: row;
     justify-content: space-between;
     text-align: left;
+  }
+}
+
+@media (max-width: 639px) {
+  .app-header {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .header-container {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .brand-logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-text h1 {
+    font-size: 1rem;
+  }
+
+  .header-nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .nav-pill {
+    justify-content: center;
+    min-width: 0;
+    min-height: 42px;
+    padding: 0.4rem;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .mode-banner {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .mode-banner > div {
+    flex-wrap: wrap;
+  }
+
+  .mode-banner button {
+    min-height: 40px;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .main-content {
+    padding: 0.75rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .prayer-table {
+    min-width: 480px;
+  }
+
+  .prayer-table th,
+  .prayer-table td {
+    padding: 0.7rem;
+    font-size: 0.88rem;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-dialog {
+    max-height: 92dvh;
+    padding: 1.15rem;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .modal-actions {
+    flex-wrap: wrap;
+  }
+
+  .modal-actions > * {
+    flex: 1 1 100%;
+  }
+
+  .toast-container {
+    right: 0.75rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    left: 0.75rem;
   }
 }
