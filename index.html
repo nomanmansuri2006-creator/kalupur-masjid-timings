@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>Kalupur Masjid Timings — Azaan & Jamaat Schedules</title>
+  <meta name="description" content="Free community service for accurate, verified Azaan and Jamaat prayer timings for masjids across Kalupur, Ahmedabad." />
+  <meta name="theme-color" content="#064e3b" />
+  
+  <!-- Favicon & Mobile Icons -->
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/favicon.svg" />
+  <link rel="apple-touch-icon" href="./assets/icons/favicon.svg" />
+  <link rel="manifest" href="./manifest.json" />
+
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="./css/style.css" />
+
+  <!-- Supabase JS Client (v2 CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Top Application Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <a href="#home" class="brand-link" aria-label="Kalupur Masjid Timings Home">
+        <img src="./assets/logo.svg" alt="Mosque Emblem" class="brand-logo" />
+        <div class="brand-text">
+          <h1>Kalupur Masjid Timings</h1>
+          <span>Ahmedabad &bull; Trial Service</span>
+        </div>
+      </a>
+
+      <nav class="header-nav">
+        <a href="#home" class="nav-pill" id="nav-home-pill" title="Home">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          Home
+        </a>
+        <a href="#login" class="nav-pill" id="nav-auth-pill" title="Imam / Admin Portal">
+          🔐 Imam / Admin
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Connection / Demo Mode Banner -->
+  <div id="mode-banner" class="mode-banner"></div>
+
+  <!-- Dynamic SPA View Container -->
+  <main id="main-view-container" class="main-content" role="main"></main>
+
+  <!-- Global Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Global Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div>
+        <p><strong>Kalupur Masjid Timings</strong> &bull; Free Community Trial</p>
+        <p style="font-size: 0.78rem; margin-top: 0.2rem;">
+          Dedicated to providing accurate prayer schedules for the people of Kalupur, Ahmedabad.
+        </p>
+      </div>
+
+      <div class="footer-links">
+        <a href="#home">Masjids List</a>
+        <a href="#report">Report Correction</a>
+        <a href="#login">Imam Login</a>
+        <a href="#admin">Administrator</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic (ES Module) -->
+  <script type="module" src="./js/app.js"></script>
+
+</body>
+</html>

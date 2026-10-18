@@ -1,0 +1,20 @@
+{
+  "name": "kalupur-masjid-timings",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Mobile-first website for displaying and managing Azaan and Jamaat timings of masjids in Kalupur, Ahmedabad.",
+  "scripts": {
+    "start": "npx serve -l 3000 .",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "masjid",
+    "prayer-timings",
+    "kalupur",
+    "ahmedabad",
+    "supabase",
+    "pwa"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}
