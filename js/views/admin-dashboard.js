@@ -780,7 +780,9 @@ function openCreateImamModal(container, masjids) {
               ${masjids.map((m) => `<option value="${m.id}">${m.name} (${m.area})</option>`).join('')}
             </select>
           </div>
-          <div class="modal-actions">
+          <div id="create-imam-error-container"></div>
+
+          <div class="modal-actions" style="margin-top: 1.25rem;">
             <button type="button" id="cancel-create-imam-btn" class="btn btn-secondary">Cancel</button>
             <button type="submit" id="submit-create-imam-btn" class="btn btn-primary btn-lg">Authorize & Create Account</button>
           </div>
@@ -830,7 +832,9 @@ function openCreateImamModal(container, masjids) {
     const password = document.getElementById('new-imam-password').value;
     const masjidId = document.getElementById('new-imam-masjid').value;
     const submitBtn = document.getElementById('submit-create-imam-btn');
+    const errContainer = document.getElementById('create-imam-error-container');
 
+    if (errContainer) errContainer.innerHTML = '';
     submitBtn.disabled = true;
     submitBtn.textContent = 'Authorizing...';
 
@@ -840,7 +844,42 @@ function openCreateImamModal(container, masjids) {
       close();
       renderAdminDashboard(document.getElementById('main-view-container'), 'imams');
     } catch (err) {
-      showToast(err.message || 'Failed to authorize imam.', 'error');
+      console.error('Create imam error:', err);
+      const isRateLimit = err.message && (err.message.toLowerCase().includes('rate limit') || err.message.toLowerCase().includes('rate_limit'));
+      
+      if (errContainer) {
+        if (isRateLimit) {
+          errContainer.innerHTML = `
+            <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 8px; padding: 0.9rem; margin-top: 1rem; text-align: left;">
+              <div style="font-weight: 700; color: #92400e; font-size: 0.92rem; margin-bottom: 0.35rem;">
+                ⚠️ Email Rate Limit Exceeded (3/hr)
+              </div>
+              <p style="font-size: 0.83rem; color: #78350f; line-height: 1.45; margin: 0 0 0.5rem 0;">
+                Supabase shared email provider limits signup confirmation emails. You can eliminate this limit in <strong>30 seconds</strong>:
+              </p>
+              <ol style="font-size: 0.82rem; color: #78350f; margin: 0 0 0.6rem 1.25rem; line-height: 1.5;">
+                <li>Open <strong>Supabase Dashboard &rarr; Authentication &rarr; Providers &rarr; Email</strong></li>
+                <li>Turn <strong>Confirm email</strong> to <strong>OFF</strong></li>
+                <li>Click <strong>Save</strong></li>
+              </ol>
+              <div style="font-size: 0.82rem; color: #92400e; font-weight: 600;">
+                💡 Alternatively: Add user in Supabase Dashboard &rarr; Authentication &rarr; Users &rarr; Add User (with Auto Confirm ON), then paste their UUID in the "Link Existing User" section below.
+              </div>
+            </div>
+          `;
+          showToast('Email rate limit reached. See quick fix instructions in the modal.', 'error', 7000);
+        } else {
+          errContainer.innerHTML = `
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem; margin-top: 0.85rem; color: #b91c1c; font-size: 0.85rem;">
+              ${err.message || 'Failed to authorize imam.'}
+            </div>
+          `;
+          showToast(err.message || 'Failed to authorize imam.', 'error');
+        }
+      } else {
+        showToast(err.message || 'Failed to authorize imam.', 'error');
+      }
+
       submitBtn.disabled = false;
       submitBtn.textContent = 'Authorize & Create Account';
     }

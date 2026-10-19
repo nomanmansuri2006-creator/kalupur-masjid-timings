@@ -198,7 +198,32 @@ export async function createImamUserAndProfile(displayName, email, password, ass
     throw new Error('Supabase client not initialized.');
   }
 
-  // Create temporary client without persisting session so current administrator remains signed in
+  const client = getClient();
+
+  // 1. Attempt direct PostgreSQL RPC first (bypasses Supabase Auth email rate limits completely)
+  try {
+    const { data: rpcRes, error: rpcErr } = await client.rpc('admin_create_imam_user', {
+      p_email: email.trim().toLowerCase(),
+      p_password: password,
+      p_display_name: displayName.trim(),
+      p_masjid_id: assignedMasjidId || null
+    });
+
+    if (!rpcErr && rpcRes && rpcRes.success) {
+      return rpcRes.profile || { id: rpcRes.user_id, display_name: displayName, role: 'imam' };
+    }
+    if (rpcRes && rpcRes.success === false && rpcRes.error) {
+      throw new Error(rpcRes.error);
+    }
+  } catch (rpcEx) {
+    // If error is a validation error from RPC, rethrow
+    if (rpcEx.message && (rpcEx.message.includes('already exists') || rpcEx.message.includes('Access denied'))) {
+      throw rpcEx;
+    }
+    // Otherwise RPC is not created yet in Postgres, proceed to client-side creation
+  }
+
+  // 2. Client-side signup via temporary client (without affecting admin session)
   const tempClient = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
     auth: {
       persistSession: false,
@@ -208,16 +233,26 @@ export async function createImamUserAndProfile(displayName, email, password, ass
   });
 
   const { data: authData, error: authErr } = await tempClient.auth.signUp({
-    email,
+    email: email.trim(),
     password,
     options: {
       data: {
-        display_name: displayName
+        display_name: displayName.trim()
       }
     }
   });
 
   if (authErr) {
+    const msg = (authErr.message || '').toLowerCase();
+    if (msg.includes('rate limit') || msg.includes('rate_limit') || msg.includes('over_email_send_rate_limit')) {
+      throw new Error(
+        'Email Rate Limit Exceeded (Supabase free tier limits confirmation emails to 3 per hour).\n\n' +
+        'How to fix permanently in 30 seconds:\n' +
+        '1. Go to Supabase Dashboard -> Authentication -> Providers -> Email\n' +
+        '2. Turn OFF "Confirm email" and click Save.\n' +
+        '(Or run the RPC in supabase/add_admin_create_imam_rpc.sql in SQL Editor)'
+      );
+    }
     throw new Error(`Authentication registration failed: ${authErr.message}`);
   }
 
@@ -227,10 +262,9 @@ export async function createImamUserAndProfile(displayName, email, password, ass
   }
 
   // Insert profile record using current administrator client
-  const client = getClient();
   const profileRecord = {
     id: userId,
-    display_name: displayName,
+    display_name: displayName.trim(),
     role: 'imam',
     assigned_masjid_id: assignedMasjidId || null,
     active: true
