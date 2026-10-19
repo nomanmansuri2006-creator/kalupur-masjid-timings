@@ -1,30 +1,17 @@
 // ==============================================================================
 // KALUPUR MASJID TIMINGS — CONFIGURATION
-// Instructions:
-// 1. Enter your Supabase Project URL and Public Anon Key below, OR
-// 2. Configure them directly inside the website using the "Connect Supabase" banner.
-// If left blank or if dummy placeholder values are detected, the website
-// automatically runs in "Interactive Trial Demo Mode" with pre-loaded trial data
-// so you can test adding masjids, submitting timings, and approving immediately!
+// Configures Supabase Project URL, Public Anon Key, and application metadata.
 // ==============================================================================
 
 const ENV_CONFIG = {
-  // Replace with your real project details from Supabase Dashboard -> Settings -> API
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  // Supabase Project details from Supabase Dashboard -> Settings -> API
+  SUPABASE_URL: 'https://xmdmuqnjkadcwbkwqdfz.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhtZG11cW5qa2FkY3dia3dxZGZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzMjAxNTMsImV4cCI6MjEwNzg5NjE1M30.EyyRVZywxpfgU-rgBxjaT5tg0eCbuLme0dLbMbvq7IM',
   
   // App info
   APP_NAME: 'Kalupur Masjid Timings',
-  APP_VERSION: '1.0.0-trial',
-  DEFAULT_AREA: 'Kalupur, Ahmedabad',
-  
-  // Demonstration default accounts (used for instant testing in trial demo mode)
-  DEMO_ACCOUNTS: {
-    ADMIN_PHONE: '+919876543210',
-    ADMIN_OTP: '123456',
-    IMAM_PHONE: '+919876543211',
-    IMAM_OTP: '123456'
-  }
+  APP_VERSION: '1.0.0',
+  DEFAULT_AREA: 'Kalupur, Ahmedabad'
 };
 
 /**
@@ -46,7 +33,7 @@ export function isPlaceholderConfig(url, anonKey) {
   );
 }
 
-// Check if credentials exist in localStorage (allows runtime configuration from UI)
+// Check if credentials exist in localStorage (allows runtime override if needed)
 export function getConfig() {
   const localUrl = localStorage.getItem('kalupur_supabase_url');
   const localKey = localStorage.getItem('kalupur_supabase_anon_key');
@@ -54,11 +41,10 @@ export function getConfig() {
   const rawUrl = (localUrl && localUrl.trim()) || ENV_CONFIG.SUPABASE_URL.trim();
   const rawKey = (localKey && localKey.trim()) || ENV_CONFIG.SUPABASE_ANON_KEY.trim();
 
-  // If stored credentials are placeholders (e.g. "your-project-id.supabase.co"), clean them up
+  // If stored credentials are placeholders, clean them up
   if (localUrl && isPlaceholderConfig(localUrl, localKey || '')) {
     localStorage.removeItem('kalupur_supabase_url');
     localStorage.removeItem('kalupur_supabase_anon_key');
-    console.warn('Cleared placeholder Supabase credentials. Reverting to Trial Demo Mode.');
   }
 
   const isConfigured = !isPlaceholderConfig(rawUrl, rawKey);
@@ -67,8 +53,7 @@ export function getConfig() {
     ...ENV_CONFIG,
     SUPABASE_URL: isConfigured ? rawUrl : '',
     SUPABASE_ANON_KEY: isConfigured ? rawKey : '',
-    isConfigured,
-    isDemoMode: !isConfigured
+    isConfigured
   };
 }
 

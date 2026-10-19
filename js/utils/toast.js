@@ -19,7 +19,7 @@ export function showToast(message, type = 'info', duration = 4000) {
       friendlyMessage.includes('NetworkError') ||
       friendlyMessage.includes('fetch'))
   ) {
-    friendlyMessage = `Cannot reach Supabase database (${message}). If you don't have a live Supabase project configured yet, please click "Switch to Demo Mode" in the top banner.`;
+    friendlyMessage = `Cannot reach Supabase database (${message}). Please check your internet connection and verify your configuration in js/config.js.`;
     duration = 7000;
   }
 

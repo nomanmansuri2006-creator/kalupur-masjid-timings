@@ -80,16 +80,13 @@ export async function renderAdminDashboard(container, activeTab = 'submissions')
 
     ${
       fetchError
-        ? `<div style="background: #fee2e2; border: 1.5px solid #fca5a5; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; color: #991b1b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        ? `<div style="background: #fee2e2; border: 1.5px solid #fca5a5; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; color: #991b1b;">
             <div>
               <strong>⚠️ Database Connection Error:</strong> Cannot reach Supabase (${fetchError.message || 'Failed to fetch'}).
               <div style="font-size: 0.82rem; margin-top: 0.15rem; color: #7f1d1d;">
-                If you have not set up your live Supabase project yet, click <strong>"Switch to Demo Mode"</strong> to test creating masjids and managing timings locally.
+                Please verify your network connection and Supabase settings in <code>js/config.js</code>.
               </div>
             </div>
-            <button id="alert-switch-demo-btn" class="btn btn-secondary" style="min-height: 38px; padding: 0.35rem 0.85rem; font-size: 0.85rem; background: #ffffff; border-color: #f87171; color: #991b1b; font-weight: 700;">
-              Switch to Demo Mode
-            </button>
           </div>`
         : ''
     }
@@ -204,16 +201,6 @@ export async function renderAdminDashboard(container, activeTab = 'submissions')
     await store.logout();
     window.location.hash = '#home';
   };
-
-  const alertSwitchBtn = document.getElementById('alert-switch-demo-btn');
-  if (alertSwitchBtn) {
-    alertSwitchBtn.onclick = async () => {
-      const { saveConfig } = await import('../config.js');
-      saveConfig('', '');
-      showToast('Switched to local Trial Demo Mode.', 'info');
-      window.location.reload();
-    };
-  }
 
   const tabContent = document.getElementById('admin-tab-content');
   const modalsContainer = document.getElementById('admin-modals-container');
@@ -510,7 +497,7 @@ function renderMasjidsTab(container, modalsContainer, masjids) {
           <div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
               <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-dark);">${m.name}</h4>
-              <span class="badge ${m.active ? 'badge-verified' : 'badge-trial'}">
+              <span class="badge ${m.active ? 'badge-verified' : 'badge-muted'}">
                 ${m.active ? 'Active' : 'Inactive'}
               </span>
             </div>
@@ -667,7 +654,7 @@ function renderImamsTab(container, modalsContainer, profiles, masjids) {
                 </span>
               </div>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Registered Phone: <strong>${imam.phone || 'None'}</strong>
+                Registered Account: <strong>${imam.phone || 'Email User'}</strong>
               </p>
               <p style="font-size: 0.85rem; color: var(--primary); font-weight: 600; margin-top: 0.15rem;">
                 Assigned Masjid: ${assignedMasjid ? assignedMasjid.name : '<em>None (Unassigned)</em>'}
@@ -777,9 +764,14 @@ function openCreateImamModal(container, masjids) {
             <input type="text" id="new-imam-name" class="form-input" placeholder="e.g. Maulana Bilal" required />
           </div>
           <div class="form-group">
-            <label class="form-label" for="new-imam-phone">Mobile Number <span class="req">*</span></label>
-            <input type="tel" id="new-imam-phone" class="form-input" placeholder="+91 98765 XXXXX" required />
-            <div class="form-hint">This mobile number will be used by the Imam to sign in via OTP.</div>
+            <label class="form-label" for="new-imam-email">Email Address <span class="req">*</span></label>
+            <input type="email" id="new-imam-email" class="form-input" placeholder="imam@example.com" required />
+            <div class="form-hint">The Imam will use this email address to sign in.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="new-imam-password">Initial Password <span class="req">*</span></label>
+            <input type="password" id="new-imam-password" class="form-input" placeholder="At least 6 characters" minlength="6" required />
+            <div class="form-hint">Set the password for this Imam's account.</div>
           </div>
           <div class="form-group">
             <label class="form-label" for="new-imam-masjid">Assigned Masjid <span class="req">*</span></label>
@@ -790,9 +782,38 @@ function openCreateImamModal(container, masjids) {
           </div>
           <div class="modal-actions">
             <button type="button" id="cancel-create-imam-btn" class="btn btn-secondary">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-lg">Authorize Imam</button>
+            <button type="submit" id="submit-create-imam-btn" class="btn btn-primary btn-lg">Authorize & Create Account</button>
           </div>
         </form>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border);">
+          <details>
+            <summary style="font-size: 0.88rem; font-weight: 600; color: var(--primary); cursor: pointer;">
+              Or Link Existing User UUID from Supabase
+            </summary>
+            <div style="margin-top: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label" for="existing-user-id">Supabase Auth User UUID</label>
+                <input type="text" id="existing-user-id" class="form-input" placeholder="e.g. e0a1b2c3-d4e5-..." />
+                <div class="form-hint">Found under Supabase Dashboard &rarr; Authentication &rarr; Users.</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="existing-user-name">Display Name</label>
+                <input type="text" id="existing-user-name" class="form-input" placeholder="e.g. Maulana Bilal" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="existing-user-masjid">Assign to Masjid</label>
+                <select id="existing-user-masjid" class="form-select">
+                  <option value="">-- Choose Assigned Masjid --</option>
+                  ${masjids.map((m) => `<option value="${m.id}">${m.name} (${m.area})</option>`).join('')}
+                </select>
+              </div>
+              <button type="button" id="link-existing-user-btn" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
+                Link User as Imam
+              </button>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   `;
@@ -805,18 +826,53 @@ function openCreateImamModal(container, masjids) {
   document.getElementById('create-imam-form').onsubmit = async (e) => {
     e.preventDefault();
     const name = document.getElementById('new-imam-name').value.trim();
-    const phone = document.getElementById('new-imam-phone').value.trim();
+    const email = document.getElementById('new-imam-email').value.trim();
+    const password = document.getElementById('new-imam-password').value;
     const masjidId = document.getElementById('new-imam-masjid').value;
+    const submitBtn = document.getElementById('submit-create-imam-btn');
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Authorizing...';
 
     try {
-      await store.createImamAccount(name, phone, masjidId);
+      await store.createImamAccount(name, email, password, masjidId);
       showToast('Imam authorized successfully!', 'success');
       close();
       renderAdminDashboard(document.getElementById('main-view-container'), 'imams');
     } catch (err) {
-      showToast(err.message, 'error');
+      showToast(err.message || 'Failed to authorize imam.', 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Authorize & Create Account';
     }
   };
+
+  const linkBtn = document.getElementById('link-existing-user-btn');
+  if (linkBtn) {
+    linkBtn.onclick = async () => {
+      const userId = document.getElementById('existing-user-id').value.trim();
+      const name = document.getElementById('existing-user-name').value.trim();
+      const masjidId = document.getElementById('existing-user-masjid').value;
+
+      if (!userId) {
+        showToast('Please enter the Supabase User UUID.', 'error');
+        return;
+      }
+
+      linkBtn.disabled = true;
+      linkBtn.textContent = 'Linking...';
+
+      try {
+        await store.assignUserAsImam(userId, name || 'Imam', masjidId || null);
+        showToast('User linked as Imam successfully!', 'success');
+        close();
+        renderAdminDashboard(document.getElementById('main-view-container'), 'imams');
+      } catch (err) {
+        showToast(err.message || 'Failed to link user.', 'error');
+        linkBtn.disabled = false;
+        linkBtn.textContent = 'Link User as Imam';
+      }
+    };
+  }
 }
 
 // ------------------------------------------------------------------------------
@@ -845,7 +901,7 @@ function renderReportsTab(container, modalsContainer, reports) {
         <div class="card" style="margin: 0; padding: 1.1rem; border-left: 4px solid ${r.status === 'pending' ? '#d97706' : r.status === 'resolved' ? '#059669' : '#6b7280'};">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap;">
             <div>
-              <span class="badge ${r.status === 'pending' ? 'badge-pending' : r.status === 'resolved' ? 'badge-verified' : 'badge-trial'}" style="text-transform: uppercase;">
+              <span class="badge ${r.status === 'pending' ? 'badge-pending' : r.status === 'resolved' ? 'badge-verified' : 'badge-muted'}" style="text-transform: uppercase;">
                 ${r.status}
               </span>
               <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--primary-dark); margin-top: 0.35rem;">

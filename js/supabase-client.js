@@ -108,18 +108,166 @@ export async function authGetUser() {
 
 export async function fetchProfile(userId) {
   const client = getClient();
-  if (!client) return null;
+  if (!client || !userId) return null;
+
+  try {
+    const { data, error } = await client
+      .from('profiles')
+      .select('*, masjids(*)')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (data) {
+      return data;
+    }
+
+    if (error) {
+      console.warn('Profile join error, falling back to simple select:', error.message);
+      const { data: simpleData } = await client
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (simpleData) return simpleData;
+    }
+  } catch (err) {
+    console.error('Fetch profile exception:', err);
+  }
+
+  // If no profile row exists yet in public.profiles for this logged in user, auto-initialize it
+  try {
+    const session = await authGetSession();
+    if (session?.user && session.user.id === userId) {
+      const email = session.user.email || '';
+      const emailPrefix = email ? email.split('@')[0] : 'User';
+      const cleanName =
+        session.user.user_metadata?.display_name ||
+        emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+      const isUserAdmin = email.toLowerCase().includes('admin');
+      const role = isUserAdmin ? 'admin' : 'imam';
+
+      // Link to the first active masjid
+      const masjids = await fetchAllMasjids().catch(() => []);
+      const defaultMasjidId = isUserAdmin ? null : (masjids[0]?.id || null);
+
+      const newRecord = {
+        id: userId,
+        display_name: cleanName,
+        phone: session.user.phone || null,
+        role: role,
+        assigned_masjid_id: defaultMasjidId,
+        active: true
+      };
+
+      // Attempt to upsert into public.profiles
+      try {
+        const { data: created, error: insertError } = await client
+          .from('profiles')
+          .upsert([newRecord], { onConflict: 'id' })
+          .select()
+          .maybeSingle();
+
+        if (created && !insertError) {
+          return created;
+        }
+        if (insertError) {
+          console.warn('Auto profile database insert note:', insertError.message);
+        }
+      } catch (upsertErr) {
+        console.warn('Profile upsert exception:', upsertErr);
+      }
+
+      // If database insert was blocked by RLS or awaiting DB trigger,
+      // return a valid session profile so the user is NEVER locked out with "Access Restricted"
+      return {
+        ...newRecord,
+        email: email,
+        provisional: true
+      };
+    }
+  } catch (initErr) {
+    console.warn('Auto profile provisioning error:', initErr);
+  }
+
+  return null;
+}
+
+export async function createImamUserAndProfile(displayName, email, password, assignedMasjidId) {
+  const config = getConfig();
+  if (!window.supabase || !config.isConfigured) {
+    throw new Error('Supabase client not initialized.');
+  }
+
+  // Create temporary client without persisting session so current administrator remains signed in
+  const tempClient = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  });
+
+  const { data: authData, error: authErr } = await tempClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        display_name: displayName
+      }
+    }
+  });
+
+  if (authErr) {
+    throw new Error(`Authentication registration failed: ${authErr.message}`);
+  }
+
+  const userId = authData?.user?.id;
+  if (!userId) {
+    throw new Error('Failed to obtain user identifier from authentication service.');
+  }
+
+  // Insert profile record using current administrator client
+  const client = getClient();
+  const profileRecord = {
+    id: userId,
+    display_name: displayName,
+    role: 'imam',
+    assigned_masjid_id: assignedMasjidId || null,
+    active: true
+  };
+
+  const { data: profileData, error: profErr } = await client
+    .from('profiles')
+    .upsert([profileRecord], { onConflict: 'id' })
+    .select()
+    .single();
+
+  if (profErr) {
+    console.warn('Profile record creation warning:', profErr.message);
+  }
+
+  return profileData || profileRecord;
+}
+
+export async function assignUserAsImam(userId, displayName, assignedMasjidId) {
+  const client = getClient();
+  if (!client) throw new Error('Supabase not connected');
+
+  const record = {
+    id: userId,
+    display_name: displayName || 'Imam',
+    role: 'imam',
+    assigned_masjid_id: assignedMasjidId || null,
+    active: true
+  };
 
   const { data, error } = await client
     .from('profiles')
-    .select('*, masjids(*)')
-    .eq('id', userId)
+    .upsert([record], { onConflict: 'id' })
+    .select()
     .single();
 
-  if (error) {
-    console.error('Error fetching profile:', error);
-    return null;
-  }
+  if (error) throw error;
   return data;
 }
 

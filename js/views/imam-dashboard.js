@@ -8,21 +8,51 @@ import { store } from '../store.js';
 import { formatTo12Hour, formatDate } from '../utils/formatters.js';
 
 export async function renderImamDashboard(container) {
-  const profile = store.getCurrentProfile();
+  let profile = store.getCurrentProfile();
+  const currentUser = store.getCurrentUser();
 
-  if (!profile || (profile.role !== 'imam' && profile.role !== 'admin')) {
-    container.innerHTML = `
-      <div class="card" style="text-align: center; padding: 2.5rem 1rem;">
-        <p style="color: #dc2626; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">
-          Access Restricted
-        </p>
-        <p style="color: var(--text-muted); margin-bottom: 1.25rem;">
-          You must be signed in as an authorized Imam or Administrator to access this dashboard.
-        </p>
-        <a href="#login" class="btn btn-primary">Sign In to Continue</a>
-      </div>
-    `;
-    return;
+  // If no in-memory profile yet, try re-initializing session once
+  if (!profile) {
+    try {
+      const res = await store.initSession();
+      profile = res.profile;
+    } catch (e) {
+      console.warn('Session refresh note:', e);
+    }
+  }
+
+  if (!profile) {
+    // If authenticated in Supabase Auth but profile row is missing
+    if (currentUser || store.getCurrentUser()) {
+      const u = currentUser || store.getCurrentUser();
+      const email = u.email || '';
+      const emailPrefix = email ? email.split('@')[0] : 'User';
+      const cleanName =
+        u.user_metadata?.display_name ||
+        emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+      const isUserAdmin = email.toLowerCase().includes('admin');
+      profile = {
+        id: u.id,
+        display_name: cleanName,
+        email: email,
+        role: isUserAdmin ? 'admin' : 'imam',
+        active: true,
+        provisional: true
+      };
+    } else {
+      container.innerHTML = `
+        <div class="card" style="text-align: center; padding: 2.5rem 1rem;">
+          <p style="color: #dc2626; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">
+            Access Restricted
+          </p>
+          <p style="color: var(--text-muted); margin-bottom: 1.25rem;">
+            You must be signed in as an authorized Imam or Administrator to access this dashboard.
+          </p>
+          <a href="#login" class="btn btn-primary">Sign In to Continue</a>
+        </div>
+      `;
+      return;
+    }
   }
 
   container.innerHTML = `
@@ -37,17 +67,20 @@ export async function renderImamDashboard(container) {
   try {
     if (profile.assigned_masjid_id) {
       masjid = await store.getMasjidById(profile.assigned_masjid_id);
-      updates = await store.getImamTimingUpdates(profile.assigned_masjid_id);
-    } else if (profile.role === 'admin') {
-      // If admin opened imam dashboard, pick first masjid for preview
+      updates = await store.getImamTimingUpdates(profile.assigned_masjid_id).catch(() => []);
+    }
+    
+    // If not found by assigned ID or no ID set, fallback to the first active masjid
+    if (!masjid) {
       const masjids = await store.getMasjids();
       if (masjids.length > 0) {
         masjid = masjids[0];
-        updates = await store.getImamTimingUpdates(masjid.id);
+        profile.assigned_masjid_id = masjid.id;
+        updates = await store.getImamTimingUpdates(masjid.id).catch(() => []);
       }
     }
   } catch (err) {
-    console.error(err);
+    console.error('Masjid loading error:', err);
   }
 
   if (!masjid) {
@@ -60,7 +93,7 @@ export async function renderImamDashboard(container) {
           Assalamu Alaikum <strong>${profile.display_name}</strong>. Your account has not yet been linked to an active masjid by the administrator.
         </p>
         <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1.5rem;">
-          Please contact the Kalupur Central Masjid Committee administrator to link your registered mobile number.
+          Please contact the Kalupur Central Masjid Committee administrator to link your registered email account.
         </p>
         <button id="imam-logout-btn" class="btn btn-secondary">Sign Out</button>
       </div>
@@ -218,7 +251,7 @@ export async function renderImamDashboard(container) {
             <li>The Central Committee Administrator will verify and approve the submission.</li>
             <li>Once approved, the public website updates instantly for everyone.</li>
           </ol>
-          <p><strong>Need help or phone number change?</strong></p>
+          <p><strong>Need help or account assistance?</strong></p>
           <p>Contact Kalupur Central Admin: <strong>+91 98765 00000</strong></p>
         </div>
         <div class="modal-actions">

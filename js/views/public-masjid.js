@@ -93,7 +93,7 @@ export async function renderMasjidDetails(container, masjidId) {
                 </span>`
               : `<span class="badge badge-pending" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;">
                   <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
-                  Awaiting Confirmation (Trial Sample)
+                  Awaiting Confirmation
                 </span>`
           }
         </div>
@@ -121,11 +121,11 @@ export async function renderMasjidDetails(container, masjidId) {
         </a>
       </div>
 
-      <!-- Notice for trial / unverified schedule -->
+      <!-- Notice for unverified schedule -->
       ${
         !isVerified
           ? `<div style="margin-top: 1rem; padding: 0.75rem 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: var(--radius-sm); font-size: 0.85rem; color: #92400e;">
-              <strong>Note:</strong> These timings are clearly marked demonstration data for trial testing. Official timings will be displayed once verified and confirmed by the assigned Imam or administrator.
+              <strong>Note:</strong> These prayer timings have not yet been confirmed by the mosque committee or administrator.
             </div>`
           : ''
       }
